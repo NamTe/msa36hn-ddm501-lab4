@@ -12,7 +12,7 @@
   "timezone": "browser",
   "editable": true,
   "schemaVersion": 39,
-  "version": 1,
+  "version": 3,
   "refresh": "10s",
   "time": {
     "from": "now-30m",
@@ -41,7 +41,7 @@
     {
       "type": "stat",
       "title": "Drift score (max PSI)",
-      "description": "Conventional PSI bands: <0.10 stable, 0.10-0.25 moderate, >=0.25 significant. Measured against the TRAINING distribution, frozen at build time \u2014 never against recent traffic, which would make slow drift invisible. Not measuring when the window contains fewer than 200 requests or metrics are unavailable.",
+      "description": "Maximum feature PSI: <0.10 stable, 0.10-0.25 moderate, >=0.25 significant. Check Window size alongside this value: below 200 requests the service reports zero without enough data to measure drift.",
       "gridPos": {
         "x": 0,
         "y": 1,
@@ -54,7 +54,7 @@
       },
       "targets": [
         {
-          "expr": "ml_drift_score and (ml_drift_window_size >= 200)",
+          "expr": "ml_drift_score",
           "legendFormat": "PSI",
           "refId": "A",
           "datasource": {
@@ -113,8 +113,8 @@
     },
     {
       "type": "stat",
-      "title": "Drift window size",
-      "description": "Requests in the current drift window. Below 200 requests, drift is not reliable and the drift score is shown as Not measuring.",
+      "title": "Window size",
+      "description": "Requests in the current drift window. Below 200 requests, drift is not reliable; the drift score can be zero because it is not yet measured.",
       "gridPos": {
         "x": 5,
         "y": 1,
@@ -183,16 +183,184 @@
       "id": 14
     },
     {
+      "type": "stat",
+      "title": "Fairness gap",
+      "description": "Fairness gap",
+      "gridPos": {
+        "x": 10,
+        "y": 1,
+        "w": 5,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-ddm501"
+      },
+      "targets": [
+        {
+          "expr": "ml_fairness_gap",
+          "legendFormat": "gap",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-ddm501"
+          },
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 15
+    },
+    {
+      "type": "stat",
+      "title": "Decline rate",
+      "description": "Decline rate",
+      "gridPos": {
+        "x": 15,
+        "y": 1,
+        "w": 5,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-ddm501"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(ml_decisions_total{decision=\"DECLINE\"}[10m])) / clamp_min(sum(rate(ml_decisions_total[10m])), 0.001)",
+          "legendFormat": "decline share",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-ddm501"
+          },
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0.2
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 16
+    },
+    {
+      "type": "stat",
+      "title": "Model version",
+      "description": "Loaded model version from the version label on ml_model_info.",
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-ddm501"
+      },
+      "targets": [
+        {
+          "expr": "ml_model_info",
+          "legendFormat": "{{version}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-ddm501"
+          },
+          "instant": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "noValue": "No data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "id": 17
+    },
+    {
       "type": "row",
       "title": "Input drift",
+      "collapsed": false,
+      "panels": [],
       "gridPos": {
         "x": 0,
         "y": 6,
         "w": 24,
         "h": 1
       },
-      "collapsed": false,
-      "panels": [],
       "id": 3
     },
     {
@@ -202,7 +370,7 @@
       "gridPos": {
         "x": 0,
         "y": 7,
-        "w": 24,
+        "w": 16,
         "h": 9
       },
       "datasource": {
@@ -268,6 +436,78 @@
       "id": 4
     },
     {
+      "type": "timeseries",
+      "title": "Drift score against the alert thresholds",
+      "description": "Maximum feature PSI: <0.10 stable, 0.10-0.25 moderate, >=0.25 significant. Check Window size alongside this value: below 200 requests the service reports zero without enough data to measure drift.",
+      "gridPos": {
+        "x": 16,
+        "y": 7,
+        "w": 8,
+        "h": 9
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus-ddm501"
+      },
+      "targets": [
+        {
+          "expr": "ml_drift_score",
+          "legendFormat": "max PSI",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus-ddm501"
+          },
+          "instant": false
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never",
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 0.1
+              },
+              {
+                "color": "red",
+                "value": 0.25
+              }
+            ]
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "id": 18
+    },
+    {
       "type": "row",
       "title": "What the model is saying",
       "gridPos": {
@@ -282,7 +522,7 @@
     },
     {
       "type": "timeseries",
-      "title": "Prediction score quantiles",
+      "title": "Score distribution (p50 / p90 / p99)",
       "description": "Estimated default-probability quantiles from histogram buckets over the last 5 minutes. No predictions produces no quantile.",
       "gridPos": {
         "x": 0,
@@ -296,7 +536,7 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(ml_prediction_score_bucket[5m])))",
+          "expr": "histogram_quantile(0.50, sum(rate(ml_prediction_score_bucket[5m])) by (le))",
           "legendFormat": "p50",
           "refId": "A",
           "datasource": {
@@ -306,7 +546,7 @@
           "instant": false
         },
         {
-          "expr": "histogram_quantile(0.90, sum by (le) (rate(ml_prediction_score_bucket[5m])))",
+          "expr": "histogram_quantile(0.90, sum(rate(ml_prediction_score_bucket[5m])) by (le))",
           "legendFormat": "p90",
           "refId": "B",
           "datasource": {
@@ -316,7 +556,7 @@
           "instant": false
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(ml_prediction_score_bucket[5m])))",
+          "expr": "histogram_quantile(0.99, sum(rate(ml_prediction_score_bucket[5m])) by (le))",
           "legendFormat": "p99",
           "refId": "C",
           "datasource": {
@@ -365,7 +605,7 @@
     {
       "type": "timeseries",
       "title": "Decision mix",
-      "description": "Share of decisions over the last 5 minutes, aggregated across model versions. No decisions produces no mix.",
+      "description": "Decisions per second by outcome over the last 5 minutes.",
       "gridPos": {
         "x": 12,
         "y": 17,
@@ -378,7 +618,7 @@
       },
       "targets": [
         {
-          "expr": "sum by (decision) (rate(ml_decisions_total[5m])) / scalar(sum(rate(ml_decisions_total[5m])))",
+          "expr": "sum by (decision) (rate(ml_decisions_total[5m]))",
           "legendFormat": "{{decision}}",
           "refId": "A",
           "datasource": {
@@ -401,7 +641,7 @@
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
+          "unit": "ops",
           "custom": {
             "fillOpacity": 10,
             "lineWidth": 2,
@@ -417,8 +657,7 @@
               }
             ]
           },
-          "min": 0,
-          "max": 1
+          "min": 0
         },
         "overrides": []
       },
@@ -583,13 +822,13 @@
     },
     {
       "type": "timeseries",
-      "title": "Explanation latency",
-      "description": "Estimated SHAP explanation latency quantiles over the last 5 minutes, in seconds.",
+      "title": "Explanation latency p95",
+      "description": "Estimated p95 SHAP explanation latency over the last 5 minutes, in seconds.",
       "gridPos": {
         "x": 0,
         "y": 35,
         "w": 12,
-        "h": 8
+        "h": 6
       },
       "datasource": {
         "type": "prometheus",
@@ -597,29 +836,9 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum by (le) (rate(ml_explain_duration_seconds_bucket[5m])))",
-          "legendFormat": "p50",
-          "refId": "A",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-ddm501"
-          },
-          "instant": false
-        },
-        {
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(ml_explain_duration_seconds_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum(rate(ml_explain_duration_seconds_bucket[5m])) by (le))",
           "legendFormat": "p95",
-          "refId": "B",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus-ddm501"
-          },
-          "instant": false
-        },
-        {
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(ml_explain_duration_seconds_bucket[5m])))",
-          "legendFormat": "p99",
-          "refId": "C",
+          "refId": "A",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus-ddm501"
@@ -670,7 +889,7 @@
         "x": 12,
         "y": 35,
         "w": 12,
-        "h": 8
+        "h": 6
       },
       "datasource": {
         "type": "prometheus",

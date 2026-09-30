@@ -21,10 +21,10 @@ install:  ## Install dependencies
 	$(PYTHON) -m pip install -r requirements.txt
 
 train:  ## Train the model artifact the service loads
-	$(PYTHON) scripts/train_model.py
+	$(PYTHON) -m scripts.train_model
 
 reference:  ## Freeze the training distribution that drift is measured against
-	$(PYTHON) scripts/make_reference.py
+	$(PYTHON) -m scripts.make_reference
 
 # -----------------------------------------------------------------------------
 test:  ## Run the whole suite with coverage
@@ -62,16 +62,16 @@ ps:  ## What is running
 
 # -----------------------------------------------------------------------------
 load:  ## Normal traffic — establishes what healthy looks like
-	$(PYTHON) scripts/load_test.py --profile normal --requests 400
+	$(PYTHON) -m scripts.load_test --profile normal --requests 400
 
 drift:  ## Drifted traffic — the population moves, the model does not
-	$(PYTHON) scripts/load_test.py --profile drifted --requests 400
+	$(PYTHON) -m scripts.load_test --profile drifted --requests 400
 
 drift-mild:  ## A shift small enough that only the drift metric notices
-	$(PYTHON) scripts/load_test.py --profile drifted --strength 0.05 --requests 400
+	$(PYTHON) -m scripts.load_test --profile drifted --strength 0.05 --requests 400
 
 unfair:  ## One group's applications made systematically riskier
-	$(PYTHON) scripts/load_test.py --profile unfair --requests 400
+	$(PYTHON) -m scripts.load_test --profile unfair --requests 400
 
 watch:  ## Live monitoring state in the terminal
 	watch -n 2 'curl -s localhost:8000/monitoring | python -m json.tool'

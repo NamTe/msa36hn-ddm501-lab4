@@ -123,8 +123,16 @@ def population_stability_index(
     Check yourself: PSI of a distribution against itself must be 0, and PSI
     must never be negative. tests/test_monitoring.py asserts both.
     """
-    # TODO: implement
-    raise NotImplementedError
+    if actual.size == 0:
+        return 0.0
+
+    counts, _ = np.histogram(actual, bins=bin_edges)
+    actual_proportions = np.maximum(counts / actual.size, EPSILON)
+    expected_proportions = np.maximum(expected, EPSILON)
+    return float(np.sum(
+        (actual_proportions - expected_proportions)
+        * np.log(actual_proportions / expected_proportions)
+    ))
 
 
 class MonitoringWindow:
@@ -187,8 +195,19 @@ class MonitoringWindow:
           - pd.to_numeric(..., errors="coerce").dropna() before binning: a
             column that arrived as None must not silently become 0.
         """
-        # TODO: implement
-        raise NotImplementedError
+        if self.reference is None or len(self) < self.min_size:
+            return {}
+
+        frame = self.snapshot()
+        return {
+            feature: population_stability_index(
+                pd.to_numeric(frame[feature], errors="coerce").dropna().to_numpy(),
+                self.reference.bins[feature],
+                self.reference.expected[feature],
+            )
+            for feature in self.reference.features
+            if feature in frame.columns
+        }
 
     def compute_fairness(self) -> Dict[str, float]:
         """Selection rate per group: the share sent to review or decline.
@@ -201,8 +220,16 @@ class MonitoringWindow:
             handful of requests swings wildly, and publishing it as a
             fairness signal is worse than saying nothing.
         """
-        # TODO: implement
-        raise NotImplementedError
+        if len(self) < self.min_size:
+            return {}
+
+        frame = self.snapshot()
+        if frame.empty:
+            return {}
+
+        selected = frame["_score"].ge(self.threshold).groupby(frame["_group"], sort=False)
+        counts = selected.size()
+        return selected.mean()[counts >= 30].to_dict()
 
     # -------------------------------------------------------------------------
     def publish(self) -> Dict[str, Any]:
@@ -218,8 +245,32 @@ class MonitoringWindow:
             app/schemas.py is the exact shape, and tests/test_api_monitoring.py
             asserts every key.
         """
-        # TODO: implement
-        raise NotImplementedError
+        feature_psi = self.compute_drift()
+        for feature, psi in feature_psi.items():
+            FEATURE_DRIFT_PSI.labels(feature=feature).set(psi)
+        drift_score = max(feature_psi.values(), default=0.0)
+        DRIFT_SCORE.set(drift_score)
+
+        selection_rate = self.compute_fairness()
+        for group, rate in selection_rate.items():
+            SELECTION_RATE.labels(group=group).set(rate)
+        fairness_gap = (
+            max(selection_rate.values()) - min(selection_rate.values())
+            if len(selection_rate) >= 2 else 0.0
+        )
+        FAIRNESS_GAP.set(fairness_gap)
+
+        window_size = len(self)
+        return {
+            "window_size": window_size,
+            "min_window_size": self.min_size,
+            "sufficient_data": window_size >= self.min_size,
+            "feature_psi": feature_psi,
+            "drift_score": drift_score,
+            "drift_status": drift_status(drift_score),
+            "selection_rate": selection_rate,
+            "fairness_gap": fairness_gap,
+        }
 
 
 def drift_status(psi: float) -> str:

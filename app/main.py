@@ -145,8 +145,15 @@ def _observe(frame, scores, results) -> None:
     monitoring independent of the model's internals: a model swap must not
     silently stop populating the drift metrics.
     """
-    # TODO: implement
-    raise NotImplementedError
+    rows = add_derived_features(frame).to_dict(orient="records")
+    score_metric = PREDICTION_SCORE.labels(model_version=MODEL_VERSION)
+    for row, score, result in zip(rows, scores, results):
+        score_metric.observe(float(score))
+        DECISION_COUNT.labels(
+            decision=result["decision"], model_version=MODEL_VERSION
+        ).inc()
+        window.record(row, float(score), row.get("SEX"))
+    PREDICTION_COUNT.labels(model_version=MODEL_VERSION).inc(len(results))
 
 
 # =============================================================================
@@ -175,8 +182,8 @@ async def metrics():
     put an O(window) cost on the hot path. Prometheus scrapes every 10s, which
     is a perfectly good refresh rate for a signal that moves over hours.
     """
-    # TODO: implement
-    raise NotImplementedError
+    window.publish()
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/monitoring", response_model=MonitoringResponse, tags=["Monitoring"])
@@ -185,8 +192,7 @@ async def monitoring():
 
     TASK 7. One line: return MonitoringResponse(**window.publish()).
     """
-    # TODO: implement
-    raise NotImplementedError
+    return MonitoringResponse(**window.publish())
 
 
 # =============================================================================
@@ -253,8 +259,32 @@ async def explain(application: CreditApplication):
         /predict says for the same applicant.
       - On failure, count it on PREDICTION_ERRORS and raise a 500.
     """
-    # TODO: implement
-    raise NotImplementedError
+    active = _require_model()
+    if explainer is None:
+        raise HTTPException(status_code=503, detail="Explainer not available")
+    payload = application.model_dump()
+    try:
+        result = active.score(payload)
+        frame = active.to_frame([payload])
+        start = time.perf_counter()
+        explanation = explainer.explain(frame)
+        EXPLAIN_LATENCY.observe(time.perf_counter() - start)
+        response = ExplanationResponse(
+            default_probability=result["default_probability"],
+            decision=result["decision"],
+            base_value=explanation["base_value"],
+            contributions=explanation["contributions"],
+            model_version=result["model_version"],
+            note="SHAP contributions are in log-odds; positive values increase risk.",
+        )
+        EXPLAIN_COUNT.inc()
+        return response
+    except Exception as exc:  # noqa: BLE001
+        PREDICTION_ERRORS.labels(
+            error_type=type(exc).__name__, model_version=MODEL_VERSION
+        ).inc()
+        logger.error("Explanation error: %s", exc)
+        raise HTTPException(status_code=500, detail="Explanation failed") from exc
 
 
 # =============================================================================

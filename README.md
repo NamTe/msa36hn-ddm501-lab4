@@ -1,5 +1,8 @@
 # Lab 4 — Monitoring and Production Deployment
 
+[![CI](https://github.com/NamTe/msa36hn-ddm501-lab4/actions/workflows/ci.yml/badge.svg)](https://github.com/NamTe/msa36hn-ddm501-lab4/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/NamTe/msa36hn-ddm501-lab4/branch/main/graph/badge.svg)](https://codecov.io/gh/NamTe/msa36hn-ddm501-lab4)
+
 **DDM501 — AI in DevOps, DataOps, MLOps · Session 9 · 15% of the grade**
 
 Lab 3 ended with a test suite that catches broken models before they ship.

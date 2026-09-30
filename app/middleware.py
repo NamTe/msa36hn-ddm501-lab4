@@ -39,8 +39,26 @@ class MetricsMiddleware(BaseHTTPMiddleware):
           4. Keep REQUESTS_IN_PROGRESS balanced: inc before, dec in the
              `finally`. An unbalanced gauge drifts upward forever.
         """
-        # TODO: implement
-        raise NotImplementedError
+        path = request.url.path
+        if path in self.EXCLUDED:
+            return await call_next(request)
+
+        method = request.method
+        status = 500
+        started = time.perf_counter()
+        REQUESTS_IN_PROGRESS.inc()
+        try:
+            response = await call_next(request)
+            status = response.status_code
+            return response
+        finally:
+            duration = time.perf_counter() - started
+            REQUESTS_IN_PROGRESS.dec()
+            endpoint = _route_template(request, path)
+            REQUEST_COUNT.labels(
+                method=method, endpoint=endpoint, status=str(status)
+            ).inc()
+            REQUEST_LATENCY.labels(method=method, endpoint=endpoint).observe(duration)
 
 
 def _route_template(request: Request, fallback: str) -> str:

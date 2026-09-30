@@ -60,8 +60,25 @@ def build_reference(frame: pd.DataFrame, n_bins: int = 10) -> dict:
     like LIMIT_BAL put most of the mass in the first bucket, and the PSI then
     barely moves however far the distribution shifts.
     """
-    # TODO: implement
-    raise NotImplementedError
+    bins = {}
+    expected = {}
+    quantiles = np.linspace(0, 1, n_bins + 1)
+
+    for feature in MONITORED_FEATURES:
+        if feature not in frame:
+            continue
+        values = pd.to_numeric(frame[feature], errors="coerce").dropna()
+        if values.empty:
+            continue
+        edges = np.unique(np.quantile(values, quantiles))
+        if edges.size < 3:
+            continue
+        edges[0], edges[-1] = -np.inf, np.inf
+        counts, _ = np.histogram(values, bins=edges)
+        bins[feature] = edges.tolist()
+        expected[feature] = (counts / counts.sum()).tolist()
+
+    return {"bins": bins, "expected": expected, "n_bins": n_bins}
 
 
 def main() -> None:

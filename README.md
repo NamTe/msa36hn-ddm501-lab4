@@ -164,3 +164,65 @@ profiles, screenshot your dashboard for each, and answer:
    drift scores are similar. What distinguishes them on your dashboard?
 
 Two to three pages. Numbers from your own runs, not from this README.
+
+---
+
+## Submission report and evidence
+
+The [PDF analysis report](submission/analysis.pdf) contains two pages of analysis followed by seven captioned screenshots: the alert screen and the Model Behaviour and Service Health dashboards for each profile (nine pages total). The [Markdown version](submission/analysis.md) includes the same analysis and embedded screenshots.
+
+### Measured results
+
+Each profile produced 400 successful predictions (HTTP 200), with a final monitoring window of 400 and sufficient data for drift analysis. These are the captured results, distinct from the reference examples above. Fairness gaps are expressed in percentage points (pp); selection means REVIEW or DECLINE.
+
+| Profile | Maximum PSI | Drift status | Mean prediction score | Decline share | Fairness gap |
+|---|---:|---|---:|---:|---:|
+| Normal | 0.0301 | Stable | 0.2355 | 8.00% | 1.88 pp |
+| Drifted (strength 1.0) | 4.2510 | Significant | 0.5897 | 54.75% | 3.76 pp |
+| Unfair | 0.3526 | Significant | 0.3966 | 32.00% | 72.22 pp |
+
+Full drift increased risk scores and declines across both groups. The unfair profile produced a much larger group selection-rate gap despite a smaller aggregate PSI. The report also discusses elevated HTTP latency and distinguishes observed alert states from threshold crossings.
+
+### Captured evidence
+
+#### Normal traffic
+
+[Run output](submission/normal-run.txt) · [Monitoring snapshot](submission/normal-monitoring.json)
+
+**Model Behaviour**
+
+![Normal traffic - Model Behaviour dashboard](submission/normal-run-model-behaviour.png)
+
+**Service Health**
+
+![Normal traffic - Service Health dashboard](submission/normal-run-service-health.png)
+
+#### Drifted traffic (strength 1.0)
+
+[Run output](submission/drifted-run.txt) · [Monitoring snapshot](submission/drifted-monitoring.json)
+
+**Model Behaviour**
+
+![Drifted traffic (strength 1.0) - Model Behaviour dashboard](submission/drifted-run-model-behaviour.png)
+
+**Service Health**
+
+![Drifted traffic (strength 1.0) - Service Health dashboard](submission/drifted-run-service-health.png)
+
+#### Unfair traffic
+
+[Run output](submission/unfair-run.txt) · [Monitoring snapshot](submission/unfair-monitoring.json)
+
+**Model Behaviour**
+
+![Unfair traffic - Model Behaviour dashboard](submission/unfair-run-model-behaviour.png)
+
+**Service Health**
+
+![Unfair traffic - Service Health dashboard](submission/unfair-run-service-health.png)
+
+#### Alert evaluation
+
+The alert screen shows **12 rules: 4 pending, 8 normal, and none firing**. DecisionMixShift is pending for 15 minutes; FairnessGapWidened, ModerateFeatureDrift, and SignificantFeatureDrift are pending for 12 minutes. Their configured hold periods have not yet elapsed at capture time.
+
+![Alert evaluation showing four pending rules and eight normal rules](submission/alert.png)
